@@ -7,6 +7,11 @@ import { fromPath } from "pdf2pic";
 const app = express();
 const upload = multer({ dest: "/tmp" });
 
+// ✅ Root route for welcome message
+app.get("/", (req, res) => {
+  res.send("<h1>Welcome to PDF-to-Image API 🚀</h1>");
+});
+
 app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
@@ -30,7 +35,11 @@ app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
       }
     }
 
-    res.json({ images });
+    res.json({
+      message: "PDF converted successfully!",
+      totalPages: images.length,  // ✅ total pages info
+      images
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
