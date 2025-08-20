@@ -1,17 +1,21 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { fromPath } from "pdf2pic";
 
 const app = express();
 const upload = multer({ dest: "/tmp" });
 
-// ✅ Root route for welcome message
+// Serve /tmp as static folder
+app.use("/tmp", express.static("/tmp"));
+
+// Root welcome route
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to PDF-to-Image API 🚀</h1>");
 });
 
-// ✅ PDF to Base64 endpoint
+// PDF to image endpoint
 app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
@@ -20,23 +24,25 @@ app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
     }
 
     const baseName = path.parse(file.originalname).name;
+    const outputDir = "/tmp";
 
-    // Converter
     const convert = fromPath(file.path, {
       density: 100,
       format: "png",
       width: 600,
       height: 800,
+      savePath: outputDir,
+      saveFilename: baseName,
     });
 
     const images = [];
-    const maxPages = 5; // ✅ limit pages to avoid 504
+    const maxPages = 5; // limit pages to avoid timeout
 
     for (let pageIndex = 1; pageIndex <= maxPages; pageIndex++) {
       try {
         const page = await convert(pageIndex);
-        if (!page || !page.base64) break;
-        images.push(page.base64);
+        if (!page || !page.path) break;
+        images.push(`/tmp/${path.basename(page.path)}`);
       } catch {
         break;
       }
@@ -53,7 +59,7 @@ app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
   }
 });
 
-// ✅ Local dev only
+// Local dev only
 if (process.env.NODE_ENV !== "production") {
   app.listen(3000, () =>
     console.log("🚀 Running locally on http://localhost:3000")
