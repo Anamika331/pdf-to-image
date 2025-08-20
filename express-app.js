@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
 import path from "path";
 import { fromPath } from "pdf2pic";
 
@@ -12,6 +11,7 @@ app.get("/", (req, res) => {
   res.send("<h1>Welcome to PDF-to-Image API 🚀</h1>");
 });
 
+// ✅ PDF to Base64 endpoint
 app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
@@ -20,16 +20,23 @@ app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
     }
 
     const baseName = path.parse(file.originalname).name;
-    const convert = fromPath(file.path, { density: 100, format: "png", width: 600, height: 800 });
 
-    let pageIndex = 1;
+    // Converter
+    const convert = fromPath(file.path, {
+      density: 100,
+      format: "png",
+      width: 600,
+      height: 800,
+    });
+
     const images = [];
-    while (true) {
+    const maxPages = 5; // ✅ limit pages to avoid 504
+
+    for (let pageIndex = 1; pageIndex <= maxPages; pageIndex++) {
       try {
         const page = await convert(pageIndex);
         if (!page || !page.base64) break;
         images.push(page.base64);
-        pageIndex++;
       } catch {
         break;
       }
@@ -37,13 +44,20 @@ app.post("/pdf-to-image", upload.single("file"), async (req, res) => {
 
     res.json({
       message: "PDF converted successfully!",
-      totalPages: images.length,  // ✅ total pages info
-      images
+      totalPages: images.length,
+      images,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
+
+// ✅ Local dev only
+if (process.env.NODE_ENV !== "production") {
+  app.listen(3000, () =>
+    console.log("🚀 Running locally on http://localhost:3000")
+  );
+}
 
 export default app;
